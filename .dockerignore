@@ -1,0 +1,10 @@
+# Build artifacts and deps are rebuilt inside the image — never copy host copies in.
+node_modules
+dist
+npm-debug.log
+
+# Local-only files
+.git
+.gitignore
+.env
+test-*.mjs

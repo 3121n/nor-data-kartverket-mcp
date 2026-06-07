@@ -1,0 +1,61 @@
+{
+  "name": "@nor-data/kartverket-mcp",
+  "version": "0.4.1",
+  "description": "MCP server for Norwegian map and cadastre data from Kartverket (Geonorge): address search/geocoding, place names, properties (matrikkel), buildings, municipalities, statistical zones and terrain elevation. No API key required.",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "drist-kartverket-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LISTING.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/3121n/nor-data-kartverket-mcp.git"
+  },
+  "homepage": "https://github.com/3121n/nor-data-kartverket-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/3121n/nor-data-kartverket-mcp/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "norway",
+    "kartverket",
+    "geonorge",
+    "geocoding",
+    "cadastre",
+    "address",
+    "matrikkel",
+    "stedsnavn",
+    "adresser"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "zod": "^3.23.8"
+  },
+  "optionalDependencies": {
+    "apify": "^3.7.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "@types/node": "^22.10.0",
+    "@types/cors": "^2.8.13",
+    "@types/express": "^5.0.2"
+  }
+}

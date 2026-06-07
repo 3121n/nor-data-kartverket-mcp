@@ -1,0 +1,12 @@
+{
+	"$schema": "https://apify.com/schemas/v1/actor.ide.json",
+	"actorSpecification": 1,
+	"name": "kartverket-mcp",
+	"title": "Kartverket MCP server (Norwegian map & cadastre data)",
+	"description": "MCP server exposing Kartverket's open Norwegian geodata: address search/geocoding, place names, properties (matrikkel), buildings, municipalities, statistical zones and terrain elevation. Runs as an MCP server in Apify standby mode and exposes the MCP endpoint at POST /mcp.",
+	"version": "0.4",
+	"buildTag": "latest",
+	"usesStandbyMode": true,
+	"dockerfile": "./Dockerfile",
+	"webServerMcpPath": "/mcp"
+}

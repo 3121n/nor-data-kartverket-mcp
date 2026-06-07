@@ -1,0 +1,12 @@
+{
+    "actor-start": {
+        "eventTitle": "Actor start",
+        "eventDescription": "Flat fee charged once when the MCP server starts handling a session.",
+        "eventPriceUsd": 0.001
+    },
+    "tool-call": {
+        "eventTitle": "Tool call",
+        "eventDescription": "Charged once for each Kartverket tool call (address search, geocoding, property/building lookup, elevation, etc.).",
+        "eventPriceUsd": 0.002
+    }
+}

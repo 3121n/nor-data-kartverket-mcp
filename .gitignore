@@ -1,0 +1,5 @@
+node_modules
+dist
+.notion_api_key
+test-bygning.mjs
+test-grunnkrets.mjs
