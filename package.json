@@ -1,7 +1,7 @@
 {
   "name": "@nor-data/kartverket-mcp",
-  "version": "0.4.2",
-  "description": "MCP server for Norwegian map and cadastre data from Kartverket (Geonorge): address search/geocoding, place names, properties (matrikkel), buildings, municipalities, statistical zones and terrain elevation. No API key required.",
+  "version": "0.5.0",
+  "description": "MCP server for Norwegian map and cadastre data from Kartverket (Geonorge): address search/geocoding, place names, properties (matrikkel), buildings, municipalities (lookup by number, name search, boundary GeoJSON), statistical zones and terrain elevation. No API key required.",
   "type": "module",
   "main": "dist/index.js",
   "bin": {

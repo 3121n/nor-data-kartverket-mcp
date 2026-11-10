@@ -54,6 +54,35 @@ Slå opp kommune og fylke for et geografisk punkt.
 
 **Returnerer:** `kommune`, `kommunenummer`, `fylke`, `fylkesnummer`.
 
+### `hent_kommune` (v0.5.0)
+
+Hent én kommune fra kommunenummer.
+
+**Parametere:**
+- `kommunenummer` (påkrevd): 4 sifre, f.eks. `3911`
+
+**Returnerer:** `funnet`, `kommune`, `kommunenavnNorsk`, `fylke`, `fylkesnummer`, `gyldigeNavn` (bokmål/nynorsk/samisk), `samiskForvaltningsomrade`, `representasjonspunkt` (lat/lon), `avgrensningsboks` (min/max lon/lat), `kilde`. Historisk/ukjent nummer gir `funnet: false` uten feil.
+
+### `hent_kommune_omrade` (v0.5.0)
+
+Hent kommunegrensen som GeoJSON (MultiPolygon, EPSG:4258).
+
+**Parametere:**
+- `kommunenummer` (påkrevd): 4 sifre
+- `bareStatistikk` (valgfri): `true` gir bare antall polygoner/punkter
+
+**Returnerer:** `geometriType`, `antallPolygoner`, `antallPunkter`, `omrade` (GeoJSON), `kilde`.
+
+### `sok_kommuner` (v0.5.0)
+
+Finn kommunenummer fra navn, eller list kommunene i et fylke.
+
+**Parametere:**
+- `sok` (valgfri): delstreng av kommunenavn
+- `fylkesnummer` (valgfri): 2 sifre, f.eks. `39`
+
+**Returnerer:** `antall`, `kommuner[]` med `kommunenummer`, `kommune`, `kommunenavnNorsk`; `fylke` når fylkesnummer er gitt.
+
 ### `sok_eiendom`
 
 Slå opp matrikkeleiendom enten via et geografisk punkt eller via matrikkelnummer (knr/gnr/bnr).
@@ -147,6 +176,14 @@ hent_hoyde({ lat: 61.6364, lon: 8.3127 })
 ```
 
 Returnerer ~2465 m for Galdhøpiggen (DTM 1m).
+
+### Kommune fra nummer og navn
+
+```
+sok_kommuner({ sok: "færder" })          // → 3911
+hent_kommune({ kommunenummer: "3911" })
+hent_kommune_omrade({ kommunenummer: "3911", bareStatistikk: true })
+```
 
 ### Kommune fra koordinat
 

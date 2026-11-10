@@ -20,6 +20,9 @@ This Model Context Protocol (MCP) server wraps Kartverket's official open APIs (
 | `sok_eiendom` | Cadastral property lookup by coordinate or by matrikkel number (`knr/gnr/bnr`, optionally `fnr/snr`): matrikkel number, municipality, local ID, object type and representation point. |
 | `sok_bygning` | Buildings around a point (Matrikkelen building points): decoded building type (NS-3457), decoded status (RA/IG flags new-build activity), SEFRAK heritage flag, cultural-heritage flag and distance. |
 | `sok_kommune` | Municipality and county for a coordinate: municipality name/number and county name/number. |
+| `hent_kommune` | Municipality by 4-digit number: names (incl. Nynorsk/Sámi), county, representative point and bounding box; historical numbers return `funnet: false`. |
+| `hent_kommune_omrade` | Municipality boundary as GeoJSON MultiPolygon (EPSG:4258), or just polygon/vertex counts. |
+| `sok_kommuner` | Municipality number from a name fragment, or all municipalities in a county. |
 | `sok_grunnkrets` | Statistical zone (grunnkrets) for a coordinate: 8-digit zone number, name and municipality — joinable directly to SSB tables for neighbourhood demographics. |
 | `hent_hoyde` | Terrain elevation (metres above sea level) for a coordinate, using the 1 m DTM where available, plus the data source. |
 

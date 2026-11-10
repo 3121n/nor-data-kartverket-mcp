@@ -4,7 +4,8 @@ import { z } from "zod";
 const STEDSNAVN_URL = "https://ws.geonorge.no/stedsnavn/v1/navn";
 const ADRESSER_URL = "https://ws.geonorge.no/adresser/v1/sok";
 const HOYDE_URL = "https://ws.geonorge.no/hoydedata/v1/punkt";
-const KOMMUNEINFO_PUNKT_URL = "https://ws.geonorge.no/kommuneinfo/v1/punkt";
+const KOMMUNEINFO_BASE_URL = "https://ws.geonorge.no/kommuneinfo/v1";
+const KOMMUNEINFO_PUNKT_URL = `${KOMMUNEINFO_BASE_URL}/punkt`;
 const EIENDOM_PUNKT_URL = "https://ws.geonorge.no/eiendom/v1/punkt";
 const EIENDOM_GEOKODING_URL = "https://ws.geonorge.no/eiendom/v1/geokoding";
 
@@ -15,6 +16,43 @@ async function fetchJson(url: URL): Promise<unknown> {
     throw new Error(`Geonorge ${res.status} ${res.statusText} for ${url.pathname}${body ? ": " + body.slice(0, 200) : ""}`);
   }
   return res.json();
+}
+
+/** Som fetchJson, men returnerer null ved 404 (ukjent/historisk nummer) i stedet for å kaste. */
+async function fetchJsonOr404(url: URL): Promise<unknown | null> {
+  const res = await fetch(url, { headers: { Accept: "application/json" } });
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Geonorge ${res.status} ${res.statusText} for ${url.pathname}${body ? ": " + body.slice(0, 200) : ""}`);
+  }
+  return res.json();
+}
+
+type KommuneInfo = {
+  kommunenummer?: string;
+  kommunenavn?: string;
+  kommunenavnNorsk?: string;
+  fylkesnavn?: string;
+  fylkesnummer?: string;
+  samiskForvaltningsomrade?: boolean;
+  gyldigeNavn?: Array<{ navn?: string | null; prioritet?: number; sprak?: string | null }>;
+  punktIOmrade?: { type?: string; coordinates?: [number, number] };
+  avgrensningsboks?: { type?: string; coordinates?: number[][][] };
+};
+
+function bboxFraPolygon(ring?: number[][][]): { minLon: number; minLat: number; maxLon: number; maxLat: number } | undefined {
+  const pts = ring?.[0];
+  if (!pts || pts.length === 0) return undefined;
+  const lons = pts.map((p) => p[0]);
+  const lats = pts.map((p) => p[1]);
+  return { minLon: Math.min(...lons), minLat: Math.min(...lats), maxLon: Math.max(...lons), maxLat: Math.max(...lats) };
+}
+
+function tellPunkter(coords: unknown): number {
+  if (!Array.isArray(coords)) return 0;
+  if (coords.length === 2 && typeof coords[0] === "number") return 1;
+  return coords.reduce((n: number, c) => n + tellPunkter(c), 0);
 }
 
 type StedsnavnTreff = {
@@ -278,6 +316,124 @@ export function registerTools(s: McpServer, onToolCall?: (toolName: string) => v
           },
         ],
       };
+    },
+  );
+
+  s.tool(
+    "hent_kommune",
+    "Hent én kommune fra kommunenummer (4 sifre) via Kartverkets kommuneinfo-API: navn, fylke, gyldige navn (bokmål/nynorsk/samisk), representasjonspunkt og avgrensningsboks (WGS84). Ukjent eller historisk nummer (f.eks. 3811 etter 2024-reformen) gir `funnet: false`, ikke feil. Bruk `sok_kommuner` for å gå fra navn til nummer.",
+    {
+      kommunenummer: z.string().regex(/^\d{4}$/).describe("Kommunenummer, 4 sifre (f.eks. '3911' for Færder, '0301' for Oslo)"),
+    },
+    async ({ kommunenummer }) => {
+      await charge("hent_kommune");
+      const url = new URL(`${KOMMUNEINFO_BASE_URL}/kommuner/${kommunenummer}`);
+      const data = (await fetchJsonOr404(url)) as KommuneInfo | null;
+      if (!data) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                { kommunenummer, funnet: false, melding: "Ukjent eller historisk kommunenummer. Bruk sok_kommuner for gjeldende nummer." },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      }
+      const pkt = data.punktIOmrade?.coordinates;
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              {
+                kommunenummer: data.kommunenummer ?? kommunenummer,
+                funnet: true,
+                kommune: data.kommunenavn,
+                kommunenavnNorsk: data.kommunenavnNorsk,
+                fylke: data.fylkesnavn,
+                fylkesnummer: data.fylkesnummer,
+                gyldigeNavn: (data.gyldigeNavn ?? []).filter((n) => n.navn).map((n) => ({ navn: n.navn, sprak: n.sprak, prioritet: n.prioritet })),
+                samiskForvaltningsomrade: data.samiskForvaltningsomrade,
+                representasjonspunkt: pkt ? { lat: pkt[1], lon: pkt[0] } : undefined,
+                avgrensningsboks: bboxFraPolygon(data.avgrensningsboks?.coordinates),
+                kilde: url.toString(),
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    },
+  );
+
+  s.tool(
+    "hent_kommune_omrade",
+    "Hent kommunegrensen som GeoJSON-geometri (MultiPolygon, WGS84/EPSG:4258) for et kommunenummer. Egnet til kart og til `areaServed`/dekningsområde. Svaret kan være stort (Færder ~10 kB, store kommuner flere hundre kB); bruk `hent_kommune` hvis bare navn/boks trengs.",
+    {
+      kommunenummer: z.string().regex(/^\d{4}$/).describe("Kommunenummer, 4 sifre"),
+      bareStatistikk: z.boolean().optional().describe("true: returner bare antall polygoner/punkter, ikke selve geometrien (default false)"),
+    },
+    async ({ kommunenummer, bareStatistikk = false }) => {
+      await charge("hent_kommune_omrade");
+      const url = new URL(`${KOMMUNEINFO_BASE_URL}/kommuner/${kommunenummer}/omrade`);
+      const data = (await fetchJsonOr404(url)) as { kommunenavn?: string; kommunenummer?: string; omrade?: { type?: string; coordinates?: unknown } } | null;
+      if (!data) {
+        return {
+          content: [{ type: "text", text: JSON.stringify({ kommunenummer, funnet: false, melding: "Ukjent eller historisk kommunenummer." }, null, 2) }],
+        };
+      }
+      const coords = data.omrade?.coordinates;
+      const antallPolygoner = Array.isArray(coords) ? coords.length : 0;
+      const ut: Record<string, unknown> = {
+        kommunenummer: data.kommunenummer ?? kommunenummer,
+        funnet: true,
+        kommune: data.kommunenavn,
+        geometriType: data.omrade?.type,
+        koordinatsystem: "EPSG:4258 (lon, lat)",
+        antallPolygoner,
+        antallPunkter: tellPunkter(coords),
+        kilde: url.toString(),
+      };
+      if (!bareStatistikk) ut.omrade = data.omrade;
+      return { content: [{ type: "text", text: JSON.stringify(ut, null, 2) }] };
+    },
+  );
+
+  s.tool(
+    "sok_kommuner",
+    "Finn gjeldende kommunenummer fra kommunenavn (delstreng, uavhengig av store/små bokstaver), eller list alle kommuner i et fylke (fylkesnummer, 2 sifre). Uten parametre returneres alle kommuner (ca. 357). Bruk dette før `hent_kommune` når bare navnet er kjent.",
+    {
+      sok: z.string().min(1).optional().describe("Del av kommunenavn, f.eks. 'færder' eller 'tønsb'"),
+      fylkesnummer: z.string().regex(/^\d{2}$/).optional().describe("Fylkesnummer, 2 sifre (f.eks. '39' for Vestfold). Begrenser til ett fylke."),
+    },
+    async ({ sok, fylkesnummer }) => {
+      await charge("sok_kommuner");
+      let liste: Array<{ kommunenavn?: string; kommunenavnNorsk?: string; kommunenummer?: string }> = [];
+      let fylke: { fylkesnavn?: string; fylkesnummer?: string } | undefined;
+      if (fylkesnummer) {
+        const url = new URL(`${KOMMUNEINFO_BASE_URL}/fylker/${fylkesnummer}`);
+        const data = (await fetchJsonOr404(url)) as { fylkesnavn?: string; fylkesnummer?: string; kommuner?: typeof liste } | null;
+        if (!data) {
+          return { content: [{ type: "text", text: JSON.stringify({ fylkesnummer, funnet: false, melding: "Ukjent fylkesnummer." }, null, 2) }] };
+        }
+        fylke = { fylkesnavn: data.fylkesnavn, fylkesnummer: data.fylkesnummer };
+        liste = data.kommuner ?? [];
+      } else {
+        const url = new URL(`${KOMMUNEINFO_BASE_URL}/kommuner`);
+        url.searchParams.set("filtrer", "kommunenummer,kommunenavn,kommunenavnNorsk");
+        liste = (await fetchJson(url)) as typeof liste;
+      }
+      const q = sok?.toLocaleLowerCase("nb");
+      const treff = liste
+        .filter((k) => !q || (k.kommunenavn ?? "").toLocaleLowerCase("nb").includes(q) || (k.kommunenavnNorsk ?? "").toLocaleLowerCase("nb").includes(q))
+        .map((k) => ({ kommunenummer: k.kommunenummer, kommune: k.kommunenavn, kommunenavnNorsk: k.kommunenavnNorsk }))
+        .sort((a, b) => (a.kommunenummer ?? "").localeCompare(b.kommunenummer ?? ""));
+      return { content: [{ type: "text", text: JSON.stringify({ sok: sok ?? null, fylke: fylke ?? null, antall: treff.length, kommuner: treff }, null, 2) }] };
     },
   );
 

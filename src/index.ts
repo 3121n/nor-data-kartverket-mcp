@@ -3,7 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { registerTools } from "./tools.js";
 
-const server = new McpServer({ name: "drist-kartverket-mcp", version: "0.4.0" });
+const server = new McpServer({ name: "drist-kartverket-mcp", version: "0.5.0" });
 
 registerTools(server);
 

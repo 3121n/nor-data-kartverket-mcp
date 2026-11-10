@@ -17,7 +17,7 @@ await Actor.init();
 let chargedStart = false;
 
 function buildServer(): McpServer {
-  const server = new McpServer({ name: "drist-kartverket-mcp", version: "0.4.0" });
+  const server = new McpServer({ name: "drist-kartverket-mcp", version: "0.5.0" });
   registerTools(server, async () => {
     // Charge once per Actor run for startup, then once per tool call.
     if (!chargedStart) {
